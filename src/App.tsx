@@ -71,6 +71,7 @@ import { mainTheme } from './theme';
 import Background from 'layouts/Background';
 import GasUpdater from 'state/application/gasUpdater';
 import { RedirectExternal } from 'components/RedirectExternal/RedirectExternal';
+import PastWinnersPage from 'pages/PastWinnersPage/PastWinnersPage';
 
 const Web3ProviderNetwork = createWeb3ReactRoot(
   GlobalConst.utils.NetworkContextName,
@@ -140,6 +141,11 @@ const AppContent = () => (
                   <Route exact path='/leader-board'>
                     <PageLayout>
                       <ContestPage />
+                    </PageLayout>
+                  </Route>
+                  <Route exact path='/past-winners'>
+                    <PageLayout>
+                      <PastWinnersPage />
                     </PageLayout>
                   </Route>
                   {/* <Route exact path='/lend'>

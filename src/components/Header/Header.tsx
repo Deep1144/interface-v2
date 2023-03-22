@@ -123,6 +123,12 @@ const Header: React.FC = () => {
       isNew: true,
     },
     {
+      link: '/past-winners',
+      text: 'Past winners',
+      id: 'past-winners',
+      isNew: true,
+    },
+    {
       link: '/predictions',
       text: 'Predictions',
       id: 'predictions-page-link',
