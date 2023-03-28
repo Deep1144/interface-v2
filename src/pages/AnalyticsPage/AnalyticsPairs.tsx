@@ -26,118 +26,48 @@ const AnalyticsPairs: React.FC = () => {
   useEffect(() => {
     (async () => {
       if (version === 'v3') {
-        const pairsData = await getTopPairsV3(
-          GlobalConst.utils.ANALYTICS_PAIRS_COUNT,
+        const res = await fetch(
+          `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-pairs/v3`,
         );
-        if (pairsData) {
-          const data = pairsData.filter((item: any) => !!item);
-          try {
-            const aprs = await getPairsAPR(data.map((item: any) => item.id));
-            const gammaRewards = await getGammaRewards(chainId);
-            updateTopPairs(
-              data.map((item: any, ind: number) => {
-                const gammaPairs =
-                  GammaPairs[
-                    item.token0.id.toLowerCase() +
-                      '-' +
-                      item.token1.id.toLowerCase()
-                  ];
-                const gammaFarmAPRs = gammaPairs
-                  ? gammaPairs.map((pair) => {
-                      return {
-                        title: pair.title,
-                        apr:
-                          gammaRewards &&
-                          gammaRewards[pair.address] &&
-                          gammaRewards[pair.address.toLowerCase()]['apr']
-                            ? Number(
-                                gammaRewards[pair.address.toLowerCase()]['apr'],
-                              ) * 100
-                            : undefined,
-                      };
-                    })
-                  : [];
-                const quickFarmingAPR = aprs[ind].farmingApr;
-                const farmingApr = Math.max(
-                  quickFarmingAPR ?? 0,
-                  ...gammaFarmAPRs.map((item) => Number(item.apr ?? 0)),
-                );
-                return {
-                  ...item,
-                  apr: aprs[ind].apr,
-                  farmingApr,
-                  quickFarmingAPR,
-                  gammaFarmAPRs,
-                };
-              }),
-            );
-          } catch (e) {
-            console.log(e);
-          }
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(
+            errorText || res.statusText || `Failed to get top pairs v3`,
+          );
+        }
+        const pairsData = await res.json();
+        if (pairsData.data) {
+          updateTopPairs(pairsData.data);
         }
       } else if (version === 'v2') {
         if (ethPrice.price) {
-          const pairs = await getTopPairs(
-            GlobalConst.utils.ANALYTICS_PAIRS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-pairs/v2`,
           );
-          const formattedPairs = pairs
-            ? pairs.map((pair: any) => {
-                return pair.id;
-              })
-            : [];
-          const data = await getBulkPairData(formattedPairs, ethPrice.price);
-          if (data) {
-            updateTopPairs(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top pairs v2`,
+            );
+          }
+          const pairsData = await res.json();
+          if (pairsData.data) {
+            updateTopPairs(pairsData.data);
           }
         }
       } else {
-        const pairsData = await getTopPairsTotal(
-          GlobalConst.utils.ANALYTICS_PAIRS_COUNT,
+        const res = await fetch(
+          `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-pairs/total`,
         );
-        if (pairsData) {
-          const data = pairsData.filter((item: any) => !!item);
-          try {
-            const aprs = await getPairsAPR(data.map((item: any) => item.id));
-            const gammaRewards = await getGammaRewards(chainId);
-            updateTopPairs(
-              data.map((item: any, ind: number) => {
-                const gammaPairs = item.isV3
-                  ? GammaPairs[
-                      item.token0.id.toLowerCase() + '-' + item.token1.id
-                    ]
-                  : undefined;
-                const gammaFarmAPRs = gammaPairs
-                  ? gammaPairs.map((pair) => {
-                      return {
-                        title: pair.title,
-                        apr:
-                          gammaRewards &&
-                          gammaRewards[pair.address] &&
-                          gammaRewards[pair.address.toLowerCase()]['apr']
-                            ? Number(
-                                gammaRewards[pair.address.toLowerCase()]['apr'],
-                              ) * 100
-                            : undefined,
-                      };
-                    })
-                  : [];
-                const quickFarmingAPR = aprs[ind].farmingApr;
-                const farmingApr = Math.max(
-                  quickFarmingAPR ?? 0,
-                  ...gammaFarmAPRs.map((item) => Number(item.apr ?? 0)),
-                );
-                return {
-                  ...item,
-                  apr: aprs[ind].apr,
-                  farmingApr,
-                  quickFarmingAPR,
-                  gammaFarmAPRs,
-                };
-              }),
-            );
-          } catch (e) {
-            console.log(e);
-          }
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(
+            errorText || res.statusText || `Failed to get top pairs total`,
+          );
+        }
+        const pairsData = await res.json();
+        if (pairsData.data) {
+          updateTopPairs(pairsData.data);
         }
       }
     })();

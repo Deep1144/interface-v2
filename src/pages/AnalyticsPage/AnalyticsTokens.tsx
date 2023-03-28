@@ -6,11 +6,8 @@ import {
   useEthPrice,
   useMaticPrice,
 } from 'state/application/hooks';
-import { getTopTokens } from 'utils';
 import { Skeleton } from '@material-ui/lab';
 import { useTranslation } from 'react-i18next';
-import { GlobalConst } from 'constants/index';
-import { getTopTokensTotal, getTopTokensV3 } from 'utils/v3-graph';
 import { useDispatch } from 'react-redux';
 import { setAnalyticsLoaded } from 'state/analytics/actions';
 import { useParams } from 'react-router-dom';
@@ -46,13 +43,18 @@ const AnalyticsTokens: React.FC = () => {
           maticPrice.price !== undefined &&
           maticPrice.oneDayPrice !== undefined
         ) {
-          const data = await getTopTokensV3(
-            maticPrice.price,
-            maticPrice.oneDayPrice,
-            GlobalConst.utils.ANALYTICS_TOKENS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/v3`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+          const data = await res.json();
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       } else if (version === 'v2') {
@@ -60,13 +62,18 @@ const AnalyticsTokens: React.FC = () => {
           ethPrice.price !== undefined &&
           ethPrice.oneDayPrice !== undefined
         ) {
-          const data = await getTopTokens(
-            ethPrice.price,
-            ethPrice.oneDayPrice,
-            GlobalConst.utils.ANALYTICS_TOKENS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/v2`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+          const data = await res.json();
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       } else {
@@ -76,15 +83,18 @@ const AnalyticsTokens: React.FC = () => {
           ethPrice.price &&
           ethPrice.oneDayPrice
         ) {
-          const data = await getTopTokensTotal(
-            ethPrice.price,
-            ethPrice.oneDayPrice,
-            maticPrice.price,
-            maticPrice.oneDayPrice,
-            GlobalConst.utils.ANALYTICS_TOKENS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/total`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+          const data = await res.json();
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       }

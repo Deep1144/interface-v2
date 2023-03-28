@@ -9,7 +9,6 @@ import { getTopTokens, getPriceClass, formatNumber } from 'utils';
 import 'components/styles/TopMovers.scss';
 import { useTranslation } from 'react-i18next';
 import { useEthPrice, useMaticPrice, useIsV2 } from 'state/application/hooks';
-import { getTopTokensV3 } from 'utils/v3-graph';
 
 interface TopMoversProps {
   hideArrow?: boolean;
@@ -33,24 +32,34 @@ const TopMovers: React.FC<TopMoversProps> = ({ hideArrow = false }) => {
     (async () => {
       if (isV2) {
         if (ethPrice.price && ethPrice.oneDayPrice) {
-          const data = await getTopTokens(
-            ethPrice.price,
-            ethPrice.oneDayPrice,
-            5,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/v2?limit=5`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+          const data = await res.json();
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       } else {
         if (maticPrice.price && maticPrice.oneDayPrice) {
-          const data = await getTopTokensV3(
-            maticPrice.price,
-            maticPrice.oneDayPrice,
-            5,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/v3?limit=5`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+          const data = await res.json();
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       }

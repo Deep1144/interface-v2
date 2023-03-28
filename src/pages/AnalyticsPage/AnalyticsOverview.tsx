@@ -6,27 +6,11 @@ import { ArrowForwardIos } from '@material-ui/icons';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import { useEthPrice, useMaticPrice } from 'state/application/hooks';
-import {
-  getTopTokens,
-  getGlobalData,
-  getTopPairsV2,
-  getGammaRewards,
-} from 'utils';
-import { GammaPairs, GlobalConst } from 'constants/index';
 import { TokensTable, PairTable } from 'components';
 import AnalyticsInfo from './AnalyticsInfo';
 import AnalyticsLiquidityChart from './AnalyticsLiquidityChart';
 import AnalyticsVolumeChart from './AnalyticsVolumeChart';
 import { useTranslation } from 'react-i18next';
-import {
-  getGlobalDataV3,
-  getGlobalDataTotal,
-  getPairsAPR,
-  getTopPairsV3,
-  getTopTokensV3,
-  getTopTokensTotal,
-  getTopPairsTotal,
-} from 'utils/v3-graph';
 import { useDispatch } from 'react-redux';
 import { setAnalyticsLoaded } from 'state/analytics/actions';
 import { useActiveWeb3React } from 'hooks';
@@ -51,50 +35,56 @@ const AnalyticsOverview: React.FC = () => {
 
   useEffect(() => {
     (async () => {
-      if (version === 'v3') {
-        const data = await getGlobalDataV3();
-        if (data) {
-          updateGlobalData(data);
-        }
-      } else if (version === 'total') {
-        if (ethPrice.price && ethPrice.oneDayPrice) {
-          const data = await getGlobalDataTotal(
-            ethPrice.price,
-            ethPrice.oneDayPrice,
-          );
-          if (data) {
-            updateGlobalData(data);
-          }
-        }
-      } else if (ethPrice.price && ethPrice.oneDayPrice) {
-        const data = await getGlobalData(ethPrice.price, ethPrice.oneDayPrice);
-        if (data) {
-          updateGlobalData(data);
-        }
+      const res = await fetch(
+        `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/global-data/${version}`,
+      );
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(
+          errorText || res.statusText || `Failed to get global data ${version}`,
+        );
+      }
+
+      const data = await res.json();
+
+      if (data.data) {
+        updateGlobalData(data.data);
       }
     })();
 
     (async () => {
       if (version === 'v3') {
         if (maticPrice.price && maticPrice.oneDayPrice) {
-          const data = await getTopTokensV3(
-            maticPrice.price,
-            maticPrice.oneDayPrice,
-            GlobalConst.utils.ANALYTICS_TOKENS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/v3`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+
+          const data = await res.json();
+
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       } else if (version === 'v2') {
         if (ethPrice.price && ethPrice.oneDayPrice) {
-          const data = await getTopTokens(
-            ethPrice.price,
-            ethPrice.oneDayPrice,
-            GlobalConst.utils.ANALYTICS_TOKENS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/v2`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+          const data = await res.json();
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       } else {
@@ -104,15 +94,18 @@ const AnalyticsOverview: React.FC = () => {
           ethPrice.price &&
           ethPrice.oneDayPrice
         ) {
-          const data = await getTopTokensTotal(
-            ethPrice.price,
-            ethPrice.oneDayPrice,
-            maticPrice.price,
-            maticPrice.oneDayPrice,
-            GlobalConst.utils.ANALYTICS_TOKENS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-tokens/total`,
           );
-          if (data) {
-            updateTopTokens(data);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top tokens`,
+            );
+          }
+          const data = await res.json();
+          if (data.data) {
+            updateTopTokens(data.data);
           }
         }
       }
@@ -120,114 +113,48 @@ const AnalyticsOverview: React.FC = () => {
 
     (async () => {
       if (version === 'v3') {
-        const pairsData = await getTopPairsV3(
-          GlobalConst.utils.ANALYTICS_PAIRS_COUNT,
+        const res = await fetch(
+          `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-pairs/v3`,
         );
-        if (pairsData) {
-          const data = pairsData.filter((item: any) => !!item);
-          try {
-            const aprs = await getPairsAPR(data.map((item: any) => item.id));
-            const gammaRewards = await getGammaRewards(chainId);
-
-            updateTopPairs(
-              data.map((item: any, ind: number) => {
-                const gammaPairs =
-                  GammaPairs[
-                    item.token0.id.toLowerCase() +
-                      '-' +
-                      item.token1.id.toLowerCase()
-                  ];
-                const gammaFarmAPRs = gammaPairs
-                  ? gammaPairs.map((pair) => {
-                      return {
-                        title: pair.title,
-                        apr:
-                          gammaRewards &&
-                          gammaRewards[pair.address] &&
-                          gammaRewards[pair.address.toLowerCase()]['apr']
-                            ? Number(
-                                gammaRewards[pair.address.toLowerCase()]['apr'],
-                              ) * 100
-                            : 0,
-                      };
-                    })
-                  : [];
-                const quickFarmingAPR = aprs[ind].farmingApr;
-                const farmingApr = Math.max(
-                  quickFarmingAPR ?? 0,
-                  ...gammaFarmAPRs.map((item) => Number(item.apr ?? 0)),
-                );
-                return {
-                  ...item,
-                  apr: aprs[ind].apr,
-                  farmingApr,
-                  quickFarmingAPR,
-                  gammaFarmAPRs,
-                };
-              }),
-            );
-          } catch (e) {
-            console.log(e);
-          }
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(
+            errorText || res.statusText || `Failed to get top pairs v3`,
+          );
+        }
+        const pairsData = await res.json();
+        if (pairsData.data) {
+          updateTopPairs(pairsData.data);
         }
       } else if (version === 'v2') {
         if (ethPrice.price) {
-          const pairsData = await getTopPairsV2(
-            GlobalConst.utils.ANALYTICS_PAIRS_COUNT,
+          const res = await fetch(
+            `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-pairs/v2`,
           );
-          if (pairsData) {
-            updateTopPairs(pairsData);
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(
+              errorText || res.statusText || `Failed to get top pairs v2`,
+            );
+          }
+          const pairsData = await res.json();
+          if (pairsData.data) {
+            updateTopPairs(pairsData.data);
           }
         }
       } else {
-        const pairsData = await getTopPairsTotal(
-          GlobalConst.utils.ANALYTICS_PAIRS_COUNT,
+        const res = await fetch(
+          `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/top-pairs/total`,
         );
-        if (pairsData) {
-          const data = pairsData.filter((item: any) => !!item);
-          try {
-            const aprs = await getPairsAPR(data.map((item: any) => item.id));
-            const gammaRewards = await getGammaRewards(chainId);
-
-            updateTopPairs(
-              data.map((item: any, ind: number) => {
-                const gammaPairs = item.isV3
-                  ? GammaPairs[
-                      item.token0.id.toLowerCase() + '-' + item.token1.id
-                    ]
-                  : undefined;
-                const gammaFarmAPRs = gammaPairs
-                  ? gammaPairs.map((pair) => {
-                      return {
-                        title: pair.title,
-                        apr:
-                          gammaRewards &&
-                          gammaRewards[pair.address] &&
-                          gammaRewards[pair.address.toLowerCase()]['apr']
-                            ? Number(
-                                gammaRewards[pair.address.toLowerCase()]['apr'],
-                              ) * 100
-                            : 0,
-                      };
-                    })
-                  : [];
-                const quickFarmingAPR = aprs[ind].farmingApr;
-                const farmingApr = Math.max(
-                  quickFarmingAPR ?? 0,
-                  ...gammaFarmAPRs.map((item) => Number(item.apr ?? 0)),
-                );
-                return {
-                  ...item,
-                  apr: aprs[ind].apr,
-                  farmingApr,
-                  quickFarmingAPR,
-                  gammaFarmAPRs,
-                };
-              }),
-            );
-          } catch (e) {
-            console.log(e);
-          }
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(
+            errorText || res.statusText || `Failed to get top pairs total`,
+          );
+        }
+        const pairsData = await res.json();
+        if (pairsData.data) {
+          updateTopPairs(pairsData.data);
         }
       }
     })();

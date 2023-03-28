@@ -36,28 +36,24 @@ const AnalyticsLiquidityChart: React.FC<{
       updateGlobalChartData(null);
       setDataLoaded(false);
 
-      const duration =
-        durationIndex === GlobalConst.analyticChart.ALL_CHART
-          ? 0
-          : getChartStartTime(durationIndex);
-
-      const chartDataFn =
-        version === 'v2'
-          ? getChartData(duration)
-          : version === 'total'
-          ? getChartDataTotal(duration)
-          : getChartDataV3(duration);
-
-      chartDataFn.then(([newChartData]) => {
-        setDataLoaded(true);
-        if (newChartData) {
-          const chartData = getLimitedData(
-            newChartData,
-            GlobalConst.analyticChart.CHART_COUNT,
-          );
-          updateGlobalChartData(chartData);
-        }
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_LEADERBOARD_APP_URL}/analytics/chart-data/${durationIndex}/${version}`,
+      );
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(
+          errorText ||
+            res.statusText ||
+            `Failed to get chart data ${durationIndex} ${version}`,
+        );
+      }
+      const pairsData = await res.json();
+      setDataLoaded(true);
+      const chartData = getLimitedData(
+        pairsData.data[0],
+        GlobalConst.analyticChart.CHART_COUNT,
+      );
+      updateGlobalChartData(chartData);
     };
     fetchChartData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
