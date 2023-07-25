@@ -66,6 +66,7 @@ import useSwapRedirects from 'hooks/useSwapRedirect';
 import callWallchainAPI from 'utils/wallchainService';
 import ParaswapABI from 'constants/abis/ParaSwap_ABI.json';
 import { ONE } from 'v3lib/utils';
+import { SWAP_ROUTER_ADDRESS } from 'constants/v3/addresses';
 
 const SwapBestTrade: React.FC<{
   currencyBgClass?: string;
@@ -315,7 +316,7 @@ const SwapBestTrade: React.FC<{
         amount: srcAmount,
         side: swapType,
         options: {
-          includeDEXS: 'quickswap,quickswapv3',
+          includeDEXS: 'quickswap,quickswapv3,quickswapv3.1',
           maxImpact: maxImpactAllowed,
           partner: 'quickswapv3',
           //@ts-ignore
@@ -379,6 +380,11 @@ const SwapBestTrade: React.FC<{
     inputCurrencyV3,
     outputCurrencyV3,
   ]);
+
+  const maxAmountInputV2 = maxAmountSpend(
+    chainIdToUse,
+    currencyBalances[Field.INPUT],
+  );
   const formattedAmounts = useMemo(() => {
     return {
       [independentField]: typedValue,
@@ -388,11 +394,40 @@ const SwapBestTrade: React.FC<{
     };
   }, [independentField, typedValue, dependentField, showWrap, parsedAmounts]);
 
+  const maxAmountInput =
+    maxAmountInputV2 && inputCurrencyV3
+      ? CurrencyAmount.fromRawAmount(inputCurrencyV3, maxAmountInputV2.raw)
+      : undefined;
+
+  const handleMaxInput = useCallback(() => {
+    maxAmountInput && onUserInput(Field.INPUT, maxAmountInput.toExact());
+    setSwapType(SwapSide.SELL);
+  }, [maxAmountInput, onUserInput]);
+
+  const handleHalfInput = useCallback(() => {
+    if (!maxAmountInput) {
+      return;
+    }
+
+    const halvedAmount = maxAmountInput.divide('2');
+
+    onUserInput(
+      Field.INPUT,
+      halvedAmount.toFixed(maxAmountInput.currency.decimals),
+    );
+    setSwapType(SwapSide.SELL);
+  }, [maxAmountInput, onUserInput]);
+
+  const atMaxAmountInput = Boolean(
+    maxAmountInput && parsedAmounts[Field.INPUT]?.equalTo(maxAmountInput),
+  );
+
   const [approval, approveCallback] = useApproveCallbackFromBestTrade(
     pct,
     inputCurrencyV3,
     optimalRate,
     bonusRouteFound,
+    atMaxAmountInput,
   );
 
   const showApproveFlow =
@@ -620,38 +655,6 @@ const SwapBestTrade: React.FC<{
     [onUserInput],
   );
 
-  const maxAmountInputV2 = maxAmountSpend(
-    chainIdToUse,
-    currencyBalances[Field.INPUT],
-  );
-  const maxAmountInput =
-    maxAmountInputV2 && inputCurrencyV3
-      ? CurrencyAmount.fromRawAmount(inputCurrencyV3, maxAmountInputV2.raw)
-      : undefined;
-
-  const handleMaxInput = useCallback(() => {
-    maxAmountInput && onUserInput(Field.INPUT, maxAmountInput.toExact());
-    setSwapType(SwapSide.SELL);
-  }, [maxAmountInput, onUserInput]);
-
-  const handleHalfInput = useCallback(() => {
-    if (!maxAmountInput) {
-      return;
-    }
-
-    const halvedAmount = maxAmountInput.divide('2');
-
-    onUserInput(
-      Field.INPUT,
-      halvedAmount.toFixed(maxAmountInput.currency.decimals),
-    );
-    setSwapType(SwapSide.SELL);
-  }, [maxAmountInput, onUserInput]);
-
-  const atMaxAmountInput = Boolean(
-    maxAmountInput && parsedAmounts[Field.INPUT]?.equalTo(maxAmountInput),
-  );
-
   const onParaswap = () => {
     if (showWrap && onWrap) {
       onWrap();
@@ -830,6 +833,9 @@ const SwapBestTrade: React.FC<{
       : undefined;
 
   useEffect(() => {
+    const bonusSwapRouterAddress = chainId
+      ? SWAP_ROUTER_ADDRESS[chainId]
+      : undefined;
     (async () => {
       if (
         swapIsReady &&
@@ -838,7 +844,9 @@ const SwapBestTrade: React.FC<{
         optimalRate &&
         account &&
         library &&
-        chainId
+        chainId &&
+        approval === ApprovalState.APPROVED &&
+        bonusSwapRouterAddress
       ) {
         setBonusRouteFound(false);
         setBonusRouteLoading(true);
@@ -892,7 +900,18 @@ const SwapBestTrade: React.FC<{
     outputCurrencySymbol,
     outputCurrencyAddress,
     typedValue,
+    approval, //Added to trigger bonus route search when approval changes
   ]);
+  //Reset approvalSubmitted when approval changes, it's needed when user hadn't nor paraswap neither wallchain approvals
+  useEffect(() => {
+    if (
+      bonusRouteFound &&
+      (approval === ApprovalState.NOT_APPROVED ||
+        approval === ApprovalState.UNKNOWN)
+    ) {
+      setApprovalSubmitted(false);
+    }
+  }, [approval, bonusRouteFound]);
 
   useEffect(() => {
     fetchOptimalRate();

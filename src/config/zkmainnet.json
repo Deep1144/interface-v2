@@ -61,5 +61,8 @@
   },
   "perps": {
     "available": true
+  },
+  "bos": {
+    "available": true
   }
 }
